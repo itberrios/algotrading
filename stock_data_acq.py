@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 
 
 
-API_KEY = # ALpha Vantage API Key goes here
+API_KEY = 'K1GZTUTQ65SVGLNU' # ALpha Vantage API Key goes here
 BASE_URL = 'https://www.alphavantage.co/query?'
 FUNCTION = 'TIME_SERIES_INTRADAY_EXTENDED'  # for short term intervals
 
