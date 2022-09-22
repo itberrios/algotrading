@@ -86,18 +86,27 @@ def get_multi_periods(symbol, interval='15min', adjusted='true'):
 
 def main():
     symbols = [
-        'AAPL',
-        'TSM',
-        'NVDA',
-        'AVGO',
-        'ASML',
-        'CSCO',
-        'TXN',
-        'QCOM',
-        'RTX',
-        'AMD',
-        'INTC',
-        'LMT'
+        # 'SONY',
+        'BA',
+        'ADI',
+        'NOC',
+        'GD',
+        'MU',
+        'KLAC',
+        'LHX',
+        'APH',
+        'NXPI',
+        'ENPH',
+        'MSI',
+        'FTNT',
+        'MRVL',
+        'TEL',
+        'MCHP',
+        'ANET',
+        'STM',
+        'TDG',
+        'GFS',
+        'ON'
         ]
     
     for symbol in symbols:
