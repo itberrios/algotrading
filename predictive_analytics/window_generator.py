@@ -6,11 +6,15 @@ import matplotlib.pyplot as plt
 class WindowGenerator():
     def __init__(self, input_width, label_width, shift,
                 train_df, valid_df, test_df,
+                # train_mean=None, train_std=None,
                 label_columns=None):
       # Store the raw data.
       self.train_df = train_df
       self.valid_df = valid_df
       self.test_df = test_df
+
+      # self.train_mean = train_mean
+      # self.train_std = train_std
 
       # Work out the label column indices.
       self.label_columns = label_columns
@@ -50,6 +54,9 @@ class WindowGenerator():
             labels = tf.stack(
                 [labels[:, :, self.column_indices[name]] for name in self.label_columns],
                 axis=-1)
+
+        # add augmented data here
+        # inputs[:, 3, :]
 
         # Slicing doesn't preserve static shape information, so set the shapes
         # manually. This way the `tf.data.Datasets` are easier to inspect.
