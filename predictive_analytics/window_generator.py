@@ -5,8 +5,11 @@ import matplotlib.pyplot as plt
 
 class WindowGenerator():
     def __init__(self, input_width, label_width, shift,
+                
                 train_df, valid_df, test_df,
                 # train_mean=None, train_std=None,
+               batch_size=32,
+                remove_labels_from_inputs=False, # update to remove any column from inputs
                 label_columns=None):
       # Store the raw data.
       self.train_df = train_df
@@ -15,6 +18,10 @@ class WindowGenerator():
 
       # self.train_mean = train_mean
       # self.train_std = train_std
+      
+      # self.position_encode = position_encode
+      self.batch_size = batch_size
+      self.remove_labels_from_inputs = remove_labels_from_inputs
 
       # Work out the label column indices.
       self.label_columns = label_columns
@@ -22,7 +29,7 @@ class WindowGenerator():
          self.label_columns_indices = {name: i for i, name in
                                        enumerate(label_columns)}
       self.column_indices = {name: i for i, name in
-                             enumerate(train_df.columns)}
+                             enumerate(train_df.columns)} # 
 
       # Work out the window parameters.
       self.input_width = input_width # sequence length
@@ -55,8 +62,25 @@ class WindowGenerator():
                 [labels[:, :, self.column_indices[name]] for name in self.label_columns],
                 axis=-1)
 
+        # remove label from input features 
+        if self.remove_labels_from_inputs:
+            inputs = tf.stack(
+                [inputs[:, :, self.column_indices[name]] for name in self.column_indices.keys() 
+                                if name not in self.label_columns],
+                axis=-1)
+
         # add augmented data here
         # inputs[:, 3, :]
+
+        # we need to resample with a roughly even amount of classes
+
+        # add position encoding to the data
+        # may need to concatenate this data?
+        # if self.position_encode:
+        #     pos_encode = self.get_position_encoding()
+        #     pos_encode = np.repeat(pos_encode[None, :, :], self.batch_size, axis=0)
+
+        #     inputs = inputs + tf.convert_to_tensor(pos_encode)
 
         # Slicing doesn't preserve static shape information, so set the shapes
         # manually. This way the `tf.data.Datasets` are easier to inspect.
@@ -113,15 +137,15 @@ class WindowGenerator():
                 pos_encode[k, 2*i+1] = np.cos(k/denominator)
         return pos_encode
 
-    def make_dataset(self, data, batch_size=32):
+    def make_dataset(self, data):
         data = np.array(data, dtype=np.float32)
         ds = tf.keras.utils.timeseries_dataset_from_array(
                 data=data,
                 targets=None,
                 sequence_length=self.total_window_size,
                 sequence_stride=1,
-                shuffle=False, #True,
-                batch_size=batch_size)
+                shuffle=True,
+                batch_size=self.batch_size)
 
         ds = ds.map(self.split_window)
 
