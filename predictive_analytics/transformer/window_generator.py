@@ -5,10 +5,9 @@ import matplotlib.pyplot as plt
 
 class WindowGenerator():
     def __init__(self, input_width, label_width, shift,
-                
                 train_df, valid_df, test_df,
                 # train_mean=None, train_std=None,
-               batch_size=32,
+               batch_size=32, shuffle=False, seed=42,
                 remove_labels_from_inputs=False, # update to remove any column from inputs
                 label_columns=None):
       # Store the raw data.
@@ -21,6 +20,8 @@ class WindowGenerator():
       
       # self.position_encode = position_encode
       self.batch_size = batch_size
+      self.shuffle = shuffle
+      self.seed = seed
       self.remove_labels_from_inputs = remove_labels_from_inputs
 
       # Work out the label column indices.
@@ -144,7 +145,8 @@ class WindowGenerator():
                 targets=None,
                 sequence_length=self.total_window_size,
                 sequence_stride=1,
-                shuffle=True,
+                shuffle=self.shuffle,
+                seed=self.seed,
                 batch_size=self.batch_size)
 
         ds = ds.map(self.split_window)

@@ -1,10 +1,72 @@
-from symbol import tfpdef
+'''
+   contains the basic Transformer Encoder Architecture
+   usage:
+   
+   from basic_transformer import TransformerModel
+
+   transformer_model = TransformerModel(
+            n_heads=2,
+            d_model=512,
+            ff_dim=256,
+            num_transformer_blocks=2,
+            mlp_units=[256],
+            n_outputs=3,
+            dropout=0.1,
+            mlp_dropout=0.1)
 
 
+   Position Encoding Code from: https://www.tensorflow.org/text/tutorials/transformer.
+'''
+
+
+import numpy as np
 import tensorflow as tf
 import keras
 from tensorflow.keras import layers
 from tensorflow_addons.layers import MultiHeadAttention
+
+
+
+# ============================================================================
+# Positional Encoding
+def positional_encoding(length, depth):
+    depth = depth/2
+
+    positions = np.arange(length)[:, np.newaxis]     # (seq, 1)
+    depths = np.arange(depth)[np.newaxis, :]/depth   # (1, depth)
+
+    angle_rates = 1 / (10000**depths)         # (1, depth)
+    angle_rads = positions * angle_rates      # (pos, depth)
+
+    pos_encoding = np.concatenate(
+        [np.sin(angle_rads), np.cos(angle_rads)],
+        axis=-1) 
+
+    return tf.cast(pos_encoding, dtype=tf.float32)
+
+
+class PositionalEmbedding(layers.Layer):
+    def __init__(self, d_model, ff_dim):
+        super().__init__()
+        self.d_model = d_model
+        self.ff_dim = ff_dim
+
+
+    def build(self, input_shape):
+        # self.embedding = tf.keras.layers.Embedding(vocab_size, d_model, mask_zero=True) 
+        self.embedding = layers.Dense(self.d_model)
+        self.pos_encoding = positional_encoding(length=self.ff_dim, depth=self.d_model)
+
+
+    def call(self, x):
+        length = tf.shape(x)[1]
+        x = self.embedding(x)
+        # This factor sets the relative scale of the embedding and positonal_encoding.
+        x *= tf.math.sqrt(tf.cast(self.d_model, tf.float32))
+        x = x + self.pos_encoding[tf.newaxis, :length, :]
+        return x
+
+
 
 
 # ============================================================================
@@ -12,11 +74,11 @@ from tensorflow_addons.layers import MultiHeadAttention
 
 class TransformerEncoder(tf.keras.layers.Layer):
 
-    def __init__(self, n_heads, head_size, ff_dim, dropout=0):
+    def __init__(self, n_heads, d_model, ff_dim, dropout=0):
         super().__init__()
         
         self.n_heads = n_heads
-        self.head_size = head_size
+        self.d_model = d_model
         self.ff_dim = ff_dim
         self.dropout = dropout
 
@@ -27,7 +89,7 @@ class TransformerEncoder(tf.keras.layers.Layer):
         
         # attention portion
         self.attn_multi = MultiHeadAttention(num_heads=self.n_heads, 
-                                             head_size=self.head_size, 
+                                             head_size=self.d_model, 
                                              dropout=self.dropout)
         self.attn_dropout = layers.Dropout(self.dropout)
         self.attn_norm = layers.LayerNormalization(epsilon=1e-6)
@@ -69,7 +131,7 @@ class TransformerEncoder(tf.keras.layers.Layer):
                        'ff_dim': self.ff_dim,
                        'attn_heads': self.attn_heads,
                        'dropout': self.dropout_rate})
-        return config   
+        return config    
 
 # ============================================================================
 # Transformer Model main
@@ -78,7 +140,7 @@ class TransformerModel(keras.Model):
 
     def __init__(self, 
             n_heads,
-            head_size,
+            d_model,
             ff_dim,
             num_transformer_blocks,
             mlp_units,
@@ -89,7 +151,7 @@ class TransformerModel(keras.Model):
         super().__init__()
         
         self.n_heads = n_heads
-        self.head_size = head_size
+        self.d_model = d_model
         self.ff_dim = ff_dim
         self.num_transformer_blocks = num_transformer_blocks
         self.mlp_units = mlp_units
@@ -100,11 +162,21 @@ class TransformerModel(keras.Model):
         
          
     def build(self, input_shape):
+
         # get embedding layer that projects inputs inot high dimensional space
-        self.embed = layers.Dense(self.head_size)
+        # self.embed = layers.Dense(self.d_model)
+
+        # get learnable time layer
+        # self.time_layer = layers.Layer(tf.random.uniform((input_shape[1], self.d_model), -0.2, 0.2))
+        # self.time_layer = tf.Variable(
+        #     initial_value=tf.random.uniform((input_shape[1], self.d_model), -0.2, 0.2)
+        #     )
         
+        # get positional embedding
+        self.positional_embedding = PositionalEmbedding(self.d_model, self.ff_dim)
+
         # get transformer encoders
-        self.encoders = [TransformerEncoder(self.n_heads, self.head_size, self.ff_dim, self.dropout) 
+        self.encoders = [TransformerEncoder(self.n_heads, self.d_model, self.ff_dim, self.dropout) 
                          for _ in range(self.num_transformer_blocks)]
 
         self.avg_pool = layers.GlobalAveragePooling1D(data_format="channels_first")
@@ -122,7 +194,14 @@ class TransformerModel(keras.Model):
     def call(self, x):
 
         # project input data into high dimensional space
-        x = self.embed(x)
+        # x = self.embed(x)
+
+        # inject time information ??
+        # x = x + self.time_layer(x)
+
+
+        # Project Input to high Dimensional Space and Encode Position Information
+        x = self.positional_embedding(x)
         
         # Encoder Portion
         for encoder in self.encoders:
@@ -139,57 +218,5 @@ class TransformerModel(keras.Model):
 
         return x
 
-# ============================================================================
-# Option to use Function for Transformer Model instead
 
-
-
-
-def build_transformer(input_shape,
-            n_heads,
-            head_size,
-            ff_dim,
-            num_transformer_blocks,
-            mlp_units,
-            n_outputs=3,
-            dropout=0.1,
-            mlp_dropout=0.1,
-        ):
-    ''' Option to build transformer model 
-        usage:
-            input_shape = inputs.shape[1:]
-
-            transformer_model = build_transformer(
-                input_shape,
-                n_heads=2,
-                head_size=512,
-                ff_dim=256,
-                num_transformer_blocks=2,
-                mlp_units=[256],
-                n_outputs=3,
-                dropout=0.1,
-                mlp_dropout=0.1,
-            )
-        '''
-    inputs = keras.Input(shape=input_shape)
-    x = inputs
-
-    # model to project inputs into higher dimensional space (same as head_size??)
-    # This is just a linear layer with a bias and no activation
-    x = layers.Dense(units=head_size)(x)
-
-    # model to encode time/positions into high dimensional data
-
-    # encoder portion
-    for _ in range(num_transformer_blocks):
-        x = TransformerEncoder(n_heads, head_size, ff_dim, dropout)(x)
-
-    x = layers.GlobalAveragePooling1D(data_format="channels_first")(x)
-
-    # MLP portion for classification
-    for dim in mlp_units:
-        x = layers.Dense(dim, activation="relu")(x)
-        x = layers.Dropout(mlp_dropout)(x)
-    outputs = layers.Dense(n_outputs, activation='softmax')(x)
-    return keras.Model(inputs, outputs)
     
