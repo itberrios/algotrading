@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 class WindowGenerator():
     def __init__(self, input_width, label_width, shift,
                 train_df, valid_df, test_df,
-                # train_mean=None, train_std=None,
-               batch_size=32, shuffle=False, seed=42,
+                # update to take in a list of train, valid, test dfs
+                batch_size=32, shuffle=False, seed=42,
                 remove_labels_from_inputs=False, # update to remove any column from inputs
                 label_columns=None):
       # Store the raw data.
@@ -83,6 +83,7 @@ class WindowGenerator():
 
         #     inputs = inputs + tf.convert_to_tensor(pos_encode)
 
+        
         # Slicing doesn't preserve static shape information, so set the shapes
         # manually. This way the `tf.data.Datasets` are easier to inspect.
         inputs.set_shape([None, self.input_width, None])
@@ -90,7 +91,21 @@ class WindowGenerator():
 
         return inputs, labels
 
-    # WindowGenerator.split_window = split_window
+
+    def normalize(self, inputs, labels):
+        ''' Standardizes each window to mean - 0 and std - 1'''
+        mean = tf.math.reduce_mean(inputs, axis=1)
+        std = tf.math.reduce_std(inputs, axis=1)
+        
+        mean = tf.repeat(tf.expand_dims(mean, axis=1), 
+                         self.total_window_size, axis=1)
+        std = tf.repeat(tf.expand_dims(std, axis=1), 
+                        self.total_window_size, axis=1)
+
+        inputs = tf.math.subtract(inputs, mean)
+        inputs = tf.math.divide(inputs, std)
+
+        return inputs, labels
 
 
     def plot(self, data, model=None, plot_col='price_diff', max_subplots=3):
@@ -150,6 +165,7 @@ class WindowGenerator():
                 batch_size=self.batch_size)
 
         ds = ds.map(self.split_window)
+        ds = ds.map(self.normalize)
 
         return ds
 
