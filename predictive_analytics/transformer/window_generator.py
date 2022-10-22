@@ -4,16 +4,14 @@ import matplotlib.pyplot as plt
 
 
 class WindowGenerator():
-    def __init__(self, input_width, label_width, shift,
-                train_df, valid_df, test_df,
-                # update to take in a list of train, valid, test dfs
+    def __init__(self, input_width, label_width, shift, dfs,
                 batch_size=32, shuffle=False, seed=42,
                 remove_labels_from_inputs=False, # update to remove any column from inputs
                 label_columns=None):
       # Store the raw data.
-      self.train_df = train_df
-      self.valid_df = valid_df
-      self.test_df = test_df
+      self.train_df = dfs[0]
+      self.valid_df = dfs[1]
+      self.test_df = dfs[2]
 
       # self.train_mean = train_mean
       # self.train_std = train_std
@@ -30,7 +28,7 @@ class WindowGenerator():
          self.label_columns_indices = {name: i for i, name in
                                        enumerate(label_columns)}
       self.column_indices = {name: i for i, name in
-                             enumerate(train_df.columns)} # 
+                             enumerate(self.train_df.columns)} 
 
       # Work out the window parameters.
       self.input_width = input_width # sequence length
@@ -70,19 +68,6 @@ class WindowGenerator():
                                 if name not in self.label_columns],
                 axis=-1)
 
-        # add augmented data here
-        # inputs[:, 3, :]
-
-        # we need to resample with a roughly even amount of classes
-
-        # add position encoding to the data
-        # may need to concatenate this data?
-        # if self.position_encode:
-        #     pos_encode = self.get_position_encoding()
-        #     pos_encode = np.repeat(pos_encode[None, :, :], self.batch_size, axis=0)
-
-        #     inputs = inputs + tf.convert_to_tensor(pos_encode)
-
         
         # Slicing doesn't preserve static shape information, so set the shapes
         # manually. This way the `tf.data.Datasets` are easier to inspect.
@@ -106,6 +91,12 @@ class WindowGenerator():
         inputs = tf.math.divide(inputs, std)
 
         return inputs, labels
+
+    def get_sample_weights(self, inputs, labels):
+        weights = tf.ones(shape=(32, 1))*0.33 # compute_sample_weight(class_weight='balanced', y=labels)
+        weights[labels == 0] *= 1.5
+        weights[labels == 2] *= 1.5
+        return inputs, labels, weights
 
 
     def plot(self, data, model=None, plot_col='price_diff', max_subplots=3):
