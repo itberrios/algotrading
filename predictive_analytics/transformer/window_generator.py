@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 class WindowGenerator():
     def __init__(self, input_width, label_width, shift, dfs,
                 batch_size=32, shuffle=False, seed=42,
+                sample_weights=True,
                 remove_labels_from_inputs=False, # update to remove any column from inputs
                 label_columns=None):
       # Store the raw data.
@@ -20,6 +21,7 @@ class WindowGenerator():
       self.batch_size = batch_size
       self.shuffle = shuffle
       self.seed = seed
+      self.sample_weights = sample_weights
       self.remove_labels_from_inputs = remove_labels_from_inputs
 
       # Work out the label column indices.
@@ -93,10 +95,35 @@ class WindowGenerator():
         return inputs, labels
 
     def get_sample_weights(self, inputs, labels):
-        weights = tf.ones(shape=(32, 1))*0.33 # compute_sample_weight(class_weight='balanced', y=labels)
-        weights[labels == 0] *= 1.5
-        weights[labels == 2] *= 1.5
-        return inputs, labels, weights
+        ''' Obtains smaple weights for any number of classes.
+            NOTE: sample_weights pertain a weighting to each label
+            '''
+        # weights = tf.ones(shape=(32, 1))*0.33 # compute_sample_weight(class_weight='balanced', y=labels)
+        # weights[labels == 0] *= 1.5
+        # weights[labels == 2] *= 1.5
+
+        # compute sample weights
+        # num_down, num_same, num_up = np.bincount(self.train_df.price_change)
+
+        # get initial sample weights
+        sample_weights = tf.ones_like(labels, dtype=tf.float64)
+        
+        # get classes and counts for each one
+        class_counts = np.bincount(self.train_df.price_change)
+        total = class_counts.sum()
+        n_classes = len(class_counts)
+
+        weights = []
+        for idx, count in enumerate(class_counts):
+            # compute weight
+            weight = total / (n_classes*count)
+
+            # update weight value 
+            sample_weights = tf.where(tf.equal(labels, float(idx)), 
+                                      weight, 
+                                      sample_weights)
+        
+        return inputs, labels, sample_weights
 
 
     def plot(self, data, model=None, plot_col='price_diff', max_subplots=3):
@@ -157,6 +184,9 @@ class WindowGenerator():
 
         ds = ds.map(self.split_window)
         ds = ds.map(self.normalize)
+
+        if self.sample_weights:
+            ds = ds.map(self.get_sample_weights)
 
         return ds
 
