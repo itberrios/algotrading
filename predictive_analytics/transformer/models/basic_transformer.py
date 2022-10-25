@@ -121,17 +121,6 @@ class TransformerEncoder(tf.keras.layers.Layer):
         
         # return residual
         return res + x
-    
-    # Needed for saving and loading model with custom layer
-    def get_config(self): 
-        config = super().get_config().copy()
-        config.update({'d_k': self.d_k,
-                       'd_v': self.d_v,
-                       'n_heads': self.n_heads,
-                       'ff_dim': self.ff_dim,
-                       'attn_heads': self.attn_heads,
-                       'dropout': self.dropout_rate})
-        return config    
 
 # ============================================================================
 # Transformer Model main
@@ -218,5 +207,23 @@ class TransformerModel(keras.Model):
 
         return x
 
+    # Needed for saving and loading model with custom layer
+    # see: https://www.tensorflow.org/guide/keras/save_and_serialize
+    def get_config(self): 
+        config = super().get_config().copy()
+        config.update({
+                'n_heads' : self.n_heads,
+                'd_model' : self.d_model,
+                'ff_dim' : self.ff_dim,
+                'num_transformer_blocks' : self.num_transformer_blocks,
+                'mlp_units' : self.mlp_units,
+                'n_outputs' : self.n_outputs,
+                'dropout' : self.dropout,
+                'mlp_dropout' : self.mlp_dropout})
+        return config    
+
+    @classmethod
+    def from_config(cls, config):
+        return cls(**config)
 
     

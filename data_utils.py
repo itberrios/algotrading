@@ -7,6 +7,8 @@ Basic Data Clening functions
 """
 
 import os
+from glob import glob
+import re
 import numpy as np 
 import pandas as pd
 
@@ -70,3 +72,21 @@ def get_numeric_price_trend(df, n=4):
     pd.options.mode.chained_assignment = 'warn'
 
     return df
+
+
+def get_iqr(ser):
+    q1 = ser.quantile(0.25)
+    q3 = ser.quantile(0.75)
+    iqr = q3 - q1
+
+    return q1, q3, iqr
+
+def get_iqr_thresholds(x, lim=1.):
+    q1, q3, iqr = get_iqr(x)
+
+    lower = q1 - lim*iqr
+    upper = q3 + lim*iqr
+
+    return lower, upper
+
+
