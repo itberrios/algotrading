@@ -98,12 +98,6 @@ class WindowGenerator():
         ''' Obtains smaple weights for any number of classes.
             NOTE: sample_weights pertain a weighting to each label
             '''
-        # weights = tf.ones(shape=(32, 1))*0.33 # compute_sample_weight(class_weight='balanced', y=labels)
-        # weights[labels == 0] *= 1.5
-        # weights[labels == 2] *= 1.5
-
-        # compute sample weights
-        # num_down, num_same, num_up = np.bincount(self.train_df.price_change)
 
         # get initial sample weights
         sample_weights = tf.ones_like(labels, dtype=tf.float64)
@@ -113,7 +107,6 @@ class WindowGenerator():
         total = class_counts.sum()
         n_classes = len(class_counts)
 
-        weights = []
         for idx, count in enumerate(class_counts):
             # compute weight
             weight = total / (n_classes*count)
