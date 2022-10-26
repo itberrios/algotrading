@@ -5,10 +5,10 @@ from tensorflow.keras import models, layers, optimizers, metrics
 import numpy as np
 from functions import evaluate_on_ticker, evaluate, get_last_step_predictions # custom-made helper functions
 
-X_train = np.load('data/transformed/train_data.npy')
-y_train = np.load('data/transformed/train_targets.npy')
-X_test = np.load('data/transformed/test_data.npy')
-y_test = np.load('data/transformed/test_targets.npy')
+X_train = np.load('../../data/transformed/train_data.npy')
+y_train = np.load('../../data/transformed/train_targets.npy')
+X_test = np.load('../../data/transformed/test_data.npy')
+y_test = np.load('../../data/transformed/test_targets.npy')
 
 
 # Shuffle and split the data set
@@ -30,7 +30,7 @@ y_test = np.load('data/transformed/test_targets.npy')
 
 
 # Create model 
-num_neurons = 25
+num_neurons = 30
 model = models.Sequential([
     layers.LSTM(num_neurons, return_sequences=True, input_shape=[None, 5]),
     layers.LSTM(num_neurons, return_sequences=True),

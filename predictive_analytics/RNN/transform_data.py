@@ -18,7 +18,7 @@ START_DATE = '2022-3-1'
 END_DATE = '2022-4-22'
 RAW_INTERVAL = "15m" # Interval to retrieve data from YFinance (can be 15m, 1h, 1d, etc.)
 NO_CHANGE_THRESHOLD = 0.1 # percentage of ticker's price
-TRAIN_RATIO = 0.80
+TRAIN_RATIO = 0.95
 
 train_data = []
 train_targets = []
@@ -50,10 +50,17 @@ for ticker in tickers:
         test_data = np.concatenate((test_data, test_ticker_data), axis=0)
         test_targets = np.concatenate((test_targets, test_ticker_targets), axis=0)
 
-np.save('train_data.npy', train_data)
-np.save('train_targets.npy', train_targets)
-np.save('test_data.npy', test_data)
-np.save('test_targets.npy', test_targets)
+tot_train_labels = train_targets.shape[0]*train_targets.shape[1]        
+train_0_perc = np.count_nonzero(train_targets == 0)*100/tot_train_labels
+train_1_perc = np.count_nonzero(train_targets == 1)*100/tot_train_labels
+train_2_perc = np.count_nonzero(train_targets == 2)*100/tot_train_labels
+print("Train set has:")
+print("{:.2f}% label 0, {:.2f}% label 1, {:.2f}% label 2".format(train_0_perc, train_1_perc, train_2_perc))
+
+np.save('../../data/transformed/train_data.npy', train_data)
+np.save('../../data/transformed/train_targets.npy', train_targets)
+np.save('../../data/transformed/test_data.npy', test_data)
+np.save('../../data/transformed/test_targets.npy', test_targets)
 
 
 

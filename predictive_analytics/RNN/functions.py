@@ -11,14 +11,14 @@ def get_target(cur_avg, next_avg, threshold=0.05):
         target = 2   # price change is less than threshold (percent) --> neutral target
     elif next_avg > cur_avg:
         target = 1
-    else:
+    else: # lower
         target = 0 
     return target
 
 
 # Reformat raw data from YFinance
 def transform_data_from_ticker(ticker, START_DATE, END_DATE, RAW_INTERVAL, EVAL_RANGE, PREDICT_RANGE, NO_CHANGE_THRESHOLD, TRAIN_RATIO):
-    ticker_csv = 'data/clean/{}_15min.csv'.format(ticker)
+    ticker_csv = '../../data/clean/{}_15min.csv'.format(ticker)
     df = pd.read_csv(ticker_csv, dtype={'Open':np.float32, 'High':np.float32, 'Low':np.float32, 'Close':np.float32, 'Volume':np.float32})
     
     cur_data = []
@@ -56,7 +56,11 @@ def transform_data_from_ticker(ticker, START_DATE, END_DATE, RAW_INTERVAL, EVAL_
             
             time_series = np.concatenate((time_series, cur_day_data.reshape(1,len(cur_day_data))))
             time_series_targets = np.append(time_series_targets, target)
-            
+        
+        # window normalization
+        # time_series = np.array(time_series, dtype=np.float32)
+        # normalized_time_series = (time_series - time_series.mean(axis=0))/time_series.std(axis=0)
+        
         cur_data.append(time_series)
         cur_targets.append(time_series_targets)
         
@@ -70,7 +74,6 @@ def transform_data_from_ticker(ticker, START_DATE, END_DATE, RAW_INTERVAL, EVAL_
     # Normalization, only use info from train set
     train_data_means = train_ticker_data.mean(axis=0)
     train_data_stds = train_ticker_data.std(axis=0)
-    
     scaled_train_ticker_data = (train_ticker_data - train_data_means)/train_data_stds
     scaled_test_ticker_data = (test_ticker_data - train_data_means)/train_data_stds
     
@@ -85,7 +88,37 @@ def transform_data_from_ticker(ticker, START_DATE, END_DATE, RAW_INTERVAL, EVAL_
 def get_last_step_predictions(model, X): # X: an input Tensor to RNN. Output: 1D matrix of last step predictions
     y_pred = model.predict(X)
     return np.array([np.argmax(pred[-1]) for pred in y_pred])
- 
+
+# same as get_last_step_predictions, but also return a second column, which contains probabilities
+def get_last_step_predictions_with_confidence(model, X):
+    y_pred = model.predict(X)
+    labels = np.array([np.argmax(pred[-1]) for pred in y_pred])
+    probabilities = np.array([pred[-1,np.argmax(pred[-1])] for pred in y_pred])
+    return np.c_[labels.reshape((-1,1)), probabilities.reshape((-1,1))]
+
+
+# measure accuracy for only predictions with probablity >= confidence
+def get_last_step_accuracy_based_on_confidence(model, X, y_true, conf_threshold=0.8):
+    y_pred = get_last_step_predictions_with_confidence(model, X)
+    y_true = y_true[:, -1] # last step only
+    
+    satisfied_indicies = y_pred[:,1] > conf_threshold
+    y_pred = y_pred[satisfied_indicies, 0]
+    y_true = y_true[satisfied_indicies]
+    
+    accuracy = sum(y_pred==y_true)*100/y_pred.shape[0]
+    num_all_labels = X.shape[0]
+    num_filtered_labels = y_pred.shape[0]
+    out_of_ratio = num_filtered_labels/num_all_labels
+    num_0_label = np.count_nonzero(y_pred==0)
+    num_1_label = np.count_nonzero(y_pred==1)
+    num_2_label = np.count_nonzero(y_pred==2)
+    
+    print("For predictions with confidence >= {}%, accuracy = {:.2f}".format(conf_threshold*100, accuracy))
+    print("\t - {}/{} ({:.2f}%) of all predictions".format(num_filtered_labels, num_all_labels, out_of_ratio*100))
+    print("\t - {}/{} ({:.2f}%) of which have labels of val 0 (down)".format(num_0_label,num_filtered_labels, num_0_label*100/num_filtered_labels))
+    print("\t - {}/{} ({:.2f}%) of which have labels of val 1 (up)".format(num_1_label,num_filtered_labels, num_1_label*100/num_filtered_labels))
+    print("\t - {}/{} ({:.2f}%) of which have labels of val 2 (same)".format(num_2_label,num_filtered_labels, num_2_label*100/num_filtered_labels))
 
 def evaluate(model, X, y_true, binary=False):
     from sklearn.metrics import precision_score, recall_score
