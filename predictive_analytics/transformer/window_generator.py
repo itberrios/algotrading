@@ -6,23 +6,19 @@ import matplotlib.pyplot as plt
 class WindowGenerator():
     def __init__(self, input_width, label_width, shift, dfs,
                 batch_size=32, shuffle=False, seed=42,
-                sample_weights=True,
-                remove_labels_from_inputs=False, # update to remove any column from inputs
+                sample_weights=True, remove_cols=[],
                 label_columns=None):
       # Store the raw data.
       self.train_df = dfs[0]
       self.valid_df = dfs[1]
       self.test_df = dfs[2]
-
-      # self.train_mean = train_mean
-      # self.train_std = train_std
       
       # self.position_encode = position_encode
       self.batch_size = batch_size
       self.shuffle = shuffle
       self.seed = seed
       self.sample_weights = sample_weights
-      self.remove_labels_from_inputs = remove_labels_from_inputs
+      self.remove_cols = remove_cols
 
       # Work out the label column indices.
       self.label_columns = label_columns
@@ -64,13 +60,12 @@ class WindowGenerator():
                 axis=-1)
 
         # remove label from input features 
-        if self.remove_labels_from_inputs:
+        if len(self.remove_cols) > 0:
             inputs = tf.stack(
                 [inputs[:, :, self.column_indices[name]] for name in self.column_indices.keys() 
-                                if name not in self.label_columns],
+                                if name not in self.remove_cols],
                 axis=-1)
 
-        
         # Slicing doesn't preserve static shape information, so set the shapes
         # manually. This way the `tf.data.Datasets` are easier to inspect.
         inputs.set_shape([None, self.input_width, None])
