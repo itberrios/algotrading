@@ -33,7 +33,7 @@ def get_stocks(data_paths, tgt_window=4, iqr_lim=0.25):
         # add time encoding
         # TBD
 
-        # add time technical indicators
+        # add technical indicators
         # TBD
 
         # get upper/lower thresholds for target variables

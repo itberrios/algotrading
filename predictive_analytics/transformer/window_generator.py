@@ -7,7 +7,7 @@ class WindowGenerator():
     def __init__(self, input_width, label_width, shift, dfs,
                 batch_size=32, shuffle=False, seed=42,
                 sample_weights=True, remove_cols=[],
-                label_columns=None):
+                label_columns=None, no_sequence=False):
       # Store the raw data.
       self.train_df = dfs[0]
       self.valid_df = dfs[1]
@@ -19,6 +19,7 @@ class WindowGenerator():
       self.seed = seed
       self.sample_weights = sample_weights
       self.remove_cols = remove_cols
+      self.no_sequence = no_sequence
 
       # Work out the label column indices.
       self.label_columns = label_columns
@@ -113,6 +114,15 @@ class WindowGenerator():
         
         return inputs, labels, sample_weights
 
+    def remove_sequence(self, inputs, labels, sample_weights=None):
+        # remove sequence from inputs so simple models can be trained (i.e. Linear Models)
+        inputs = tf.expand_dims(inputs[:, 0, :], axis=1)
+
+        if tf.is_tensor(sample_weights):
+            return inputs, labels, sample_weights
+        else:
+            return inputs, labels
+
 
     def plot(self, data, model=None, plot_col='price_diff', max_subplots=3):
         inputs, labels = data
@@ -175,6 +185,9 @@ class WindowGenerator():
 
         if self.sample_weights:
             ds = ds.map(self.get_sample_weights)
+
+        if self.no_sequence:
+            ds = ds.map(self.remove_sequence)
 
         return ds
 
