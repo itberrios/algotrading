@@ -3,7 +3,7 @@
 import tensorflow as tf
 from tensorflow.keras import models, layers, optimizers, metrics
 import numpy as np
-from functions import evaluate_on_ticker, evaluate, get_last_step_predictions # custom-made helper functions
+from functions import evaluate_on_ticker, evaluate, get_last_step_predictions, get_last_step_accuracy_based_on_confidence # custom-made helper functions
 
 X_train = np.load('../../data/transformed/train_data.npy')
 y_train = np.load('../../data/transformed/train_targets.npy')
@@ -55,6 +55,7 @@ history = model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=1
 
     
 evaluate(model, X_test, y_test)
+get_last_step_accuracy_based_on_confidence(model, X_test, y_test, 0.95)
 
 
 

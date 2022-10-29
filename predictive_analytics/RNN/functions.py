@@ -99,6 +99,7 @@ def get_last_step_predictions_with_confidence(model, X):
 
 # measure accuracy for only predictions with probablity >= confidence
 def get_last_step_accuracy_based_on_confidence(model, X, y_true, conf_threshold=0.8):
+    X, y_true = X.copy(), y_true.copy()
     y_pred = get_last_step_predictions_with_confidence(model, X)
     y_true = y_true[:, -1] # last step only
     
@@ -121,6 +122,7 @@ def get_last_step_accuracy_based_on_confidence(model, X, y_true, conf_threshold=
     print("\t - {}/{} ({:.2f}%) of which have labels of val 2 (same)".format(num_2_label,num_filtered_labels, num_2_label*100/num_filtered_labels))
 
 def evaluate(model, X, y_true, binary=False):
+    X, y_true = X.copy(), y_true.copy()
     from sklearn.metrics import precision_score, recall_score
     y_pred = get_last_step_predictions(model, X)
     y_true = y_true[:, -1] # last step only
