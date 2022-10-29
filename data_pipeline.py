@@ -33,6 +33,9 @@ def get_stocks(data_paths, tgt_window=4, iqr_lim=0.25):
         # add time encoding
         # TBD
 
+        # add engineered features
+        # TBD
+
         # add technical indicators
         # TBD
 
