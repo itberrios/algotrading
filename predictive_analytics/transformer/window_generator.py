@@ -109,7 +109,9 @@ class WindowGenerator():
                         self.total_window_size, axis=1)
 
         inputs = tf.math.subtract(inputs, mean)
-        inputs = tf.math.divide(inputs, std)
+
+        # add perturbation to ensure no division by zero
+        inputs = tf.math.divide(inputs, std + 1e-6) 
 
         return inputs, labels
 
