@@ -5,46 +5,49 @@ import matplotlib.pyplot as plt
 
 class WindowGenerator():
     def __init__(self, input_width, label_width, shift, dfs,
-                batch_size=32, shuffle=False, seed=42,
-                sample_weights=True,
-                remove_labels_from_inputs=False, # update to remove any column from inputs
-                label_columns=None):
-      # Store the raw data.
-      self.train_df = dfs[0]
-      self.valid_df = dfs[1]
-      self.test_df = dfs[2]
-
-      # self.train_mean = train_mean
-      # self.train_std = train_std
+                batch_size=32, seed=42, window_norm=True,
+                sample_weights=True, 
+                remove_columns=[],
+                label_columns=None,
+                remove_nonsequential=False):
+        # Store the raw data.
+        self.train_df = dfs[0]
+        self.valid_df = dfs[1]
+        self.test_df = dfs[2]
       
-      # self.position_encode = position_encode
-      self.batch_size = batch_size
-      self.shuffle = shuffle
-      self.seed = seed
-      self.sample_weights = sample_weights
-      self.remove_labels_from_inputs = remove_labels_from_inputs
+        # self.position_encode = position_encode
+        self.batch_size = batch_size
+        self.seed = seed
+        self.window_norm = window_norm
+        self.sample_weights = sample_weights
+        self.remove_columns = remove_columns
+        self.label_columns = label_columns
+        self.remove_nonsequential = remove_nonsequential # removes non-sequential windows
 
-      # Work out the label column indices.
-      self.label_columns = label_columns
-      if label_columns is not None:
-         self.label_columns_indices = {name: i for i, name in
-                                       enumerate(label_columns)}
-      self.column_indices = {name: i for i, name in
-                             enumerate(self.train_df.columns)} 
+        # standardize training features if window norm not selected
+        if not self.window_norm:
+            self.standardize()
 
-      # Work out the window parameters.
-      self.input_width = input_width # sequence length
-      self.label_width = label_width
-      self.shift = shift
+        # Work out the label column indices.
+        if label_columns is not None:
+            self.label_columns_indices = {name: i for i, name in
+                                        enumerate(label_columns)}
+        self.column_indices = {name: i for i, name in
+                                enumerate(self.train_df.columns)} 
 
-      self.total_window_size = input_width + shift
+        # Work out the window parameters.
+        self.input_width = input_width # sequence length
+        self.label_width = label_width
+        self.shift = shift
 
-      self.input_slice = slice(0, input_width)
-      self.input_indices = np.arange(self.total_window_size)[self.input_slice]
+        self.total_window_size = input_width + shift
 
-      self.label_start = self.total_window_size - self.label_width
-      self.labels_slice = slice(self.label_start, None)
-      self.label_indices = np.arange(self.total_window_size)[self.labels_slice]
+        self.input_slice = slice(0, input_width)
+        self.input_indices = np.arange(self.total_window_size)[self.input_slice]
+
+        self.label_start = self.total_window_size - self.label_width
+        self.labels_slice = slice(self.label_start, None)
+        self.label_indices = np.arange(self.total_window_size)[self.labels_slice]
 
 
     def __repr__(self):
@@ -54,32 +57,48 @@ class WindowGenerator():
           f'Label indices: {self.label_indices}',
           f'Label column name(s): {self.label_columns}'])
 
+    def standardize(self):
+        train_mean = self.train_df.mean()
+        train_std = self.train_df.std()
+
+        # ensure that target column is not standardized
+        for col in set(self.label_columns + self.remove_columns):
+            train_mean[col] = 0
+            train_std[col] = 1
+
+        self.train_df = (self.train_df - train_mean) / train_std
+        self.valid_df = (self.valid_df - train_mean) / train_std
+        self.test_df = (self.test_df - train_mean) / train_std
+
 
     def split_window(self, features):
         inputs = features[:, self.input_slice, :]
         labels = features[:, self.labels_slice, :]
+
         if self.label_columns is not None:
             labels = tf.stack(
                 [labels[:, :, self.column_indices[name]] for name in self.label_columns],
                 axis=-1)
 
-        # remove label from input features 
-        if self.remove_labels_from_inputs:
-            inputs = tf.stack(
-                [inputs[:, :, self.column_indices[name]] for name in self.column_indices.keys() 
-                                if name not in self.label_columns],
-                axis=-1)
-
-        
         # Slicing doesn't preserve static shape information, so set the shapes
         # manually. This way the `tf.data.Datasets` are easier to inspect.
         inputs.set_shape([None, self.input_width, None])
         labels.set_shape([None, self.label_width, None])
 
+        if self.remove_nonsequential:
+            inputs, labels = self.remove_nonsequential_windows(inputs, labels)
+
+        # remove desired columns from input features 
+        if len(self.remove_columns) > 0:
+            inputs = tf.stack(
+                [inputs[:, :, self.column_indices[name]] for name in self.column_indices.keys() 
+                                if name not in self.remove_columns],
+                axis=-1)
+
         return inputs, labels
 
 
-    def normalize(self, inputs, labels):
+    def standardize_window(self, inputs, labels):
         ''' Standardizes each window to mean - 0 and std - 1'''
         mean = tf.math.reduce_mean(inputs, axis=1)
         std = tf.math.reduce_std(inputs, axis=1)
@@ -90,15 +109,17 @@ class WindowGenerator():
                         self.total_window_size, axis=1)
 
         inputs = tf.math.subtract(inputs, mean)
-        inputs = tf.math.divide(inputs, std)
+
+        # add perturbation to ensure no division by zero
+        inputs = tf.math.divide(inputs, std + 1e-6) 
 
         return inputs, labels
+
 
     def get_sample_weights(self, inputs, labels):
         ''' Obtains smaple weights for any number of classes.
             NOTE: sample_weights pertain a weighting to each label
             '''
-
         # get initial sample weights
         sample_weights = tf.ones_like(labels, dtype=tf.float64)
         
@@ -119,40 +140,30 @@ class WindowGenerator():
         return inputs, labels, sample_weights
 
 
-    def plot(self, data, model=None, plot_col='price_diff', max_subplots=3):
-        inputs, labels = data
-        plt.figure(figsize=(12, 8))
-        plot_col_index = self.column_indices[plot_col]
-        max_n = min(max_subplots, len(inputs))
-        for n in range(max_n):
-          plt.subplot(max_n, 1, n+1)
-          plt.ylabel(f'{plot_col} [normed]')
-          plt.plot(self.input_indices, inputs[n, :, plot_col_index],
-                  label='Inputs', marker='.', zorder=-10)
+    def remove_sequence(self, inputs, labels, sample_weights=None):
+        # remove sequence from inputs so simple models can be trained (i.e. Linear Models)
+        inputs = tf.expand_dims(inputs[:, 0, :], axis=1)
 
-          if self.label_columns:
-            label_col_index = self.label_columns_indices.get(plot_col, None)
-          else:
-            label_col_index = plot_col_index
+        if tf.is_tensor(sample_weights):
+            return inputs, labels, sample_weights
+        else:
+            return inputs, labels
 
-          if label_col_index is None:
-            continue
 
-          plt.scatter(self.label_indices, labels[n, :, label_col_index],
-                      edgecolors='k', label='Labels', c='#2ca02c', s=64)
-          if model is not None:
-            predictions = model(inputs)
-            plt.scatter(self.label_indices, predictions[n, :, label_col_index],
-                        marker='X', edgecolors='k', label='Predictions',
-                        c='#ff7f0e', s=64)
+    def remove_nonsequential_windows(self, inputs, labels, sample_weights=None):
+        # get locations of consistent dayofweeks in each batch
+        dayofweek_repeats = tf.repeat(tf.expand_dims(inputs[:, 0, -1], axis=1), 
+                                      self.input_width, axis=1)
+        valid_locs = tf.reduce_all(inputs[:, :, -1] == dayofweek_repeats, axis=1)
 
-          if n == 0:
-            plt.legend()
+        inputs = inputs[valid_locs]
+        labels = labels[valid_locs]
 
-        plt.xlabel('Time [h]')
-
-    # WindowGenerator.plot = plot
-    
+        if tf.is_tensor(sample_weights):
+            return inputs, labels, sample_weights
+        else:
+            return inputs, labels
+            
     
     def get_position_encoding(self, n=10000):
         d = self.train_df.shape[1] # assume all features are used
@@ -171,19 +182,20 @@ class WindowGenerator():
                 targets=None,
                 sequence_length=self.total_window_size,
                 sequence_stride=1,
-                shuffle=self.shuffle,
+                shuffle=False,
                 seed=self.seed,
                 batch_size=self.batch_size)
 
+        # get split window
         ds = ds.map(self.split_window)
-        ds = ds.map(self.normalize)
+
+        if self.window_norm:
+            ds = ds.map(self.standardize_window)
 
         if self.sample_weights:
             ds = ds.map(self.get_sample_weights)
 
         return ds
-
-    # WindowGenerator.make_dataset = make_dataset
     
 
     @property
@@ -207,9 +219,4 @@ class WindowGenerator():
             result = next(iter(self.train))
             # And cache it for next time
             self._example = result
-        return result
-
-    # WindowGenerator.train = train
-    # WindowGenerator.valid = valid
-    # WindowGenerator.test = test
-    # WindowGenerator.example = example
+        # return result
