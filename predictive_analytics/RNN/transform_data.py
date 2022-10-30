@@ -14,10 +14,9 @@ tickers = ['AAPL', 'GOOG', 'TSLA', 'QCOM']
 
 EVAL_RANGE = 24
 PREDICT_RANGE = 4
-START_DATE = '2022-3-1'
-END_DATE = '2022-4-22'
-RAW_INTERVAL = "15m" # Interval to retrieve data from YFinance (can be 15m, 1h, 1d, etc.)
-NO_CHANGE_THRESHOLD = 0.1 # percentage of ticker's price
+INTERVAL = 5 # minutes
+
+NO_CHANGE_THRESHOLD = 0.08 # percentage of ticker's price
 TRAIN_RATIO = 0.95
 
 train_data = []
@@ -31,7 +30,7 @@ for ticker in tickers:
     ticker_no += 1
     
     # reformat data to match input for RNN
-    transformed_data = transform_data_from_ticker(ticker, START_DATE, END_DATE, RAW_INTERVAL, EVAL_RANGE, PREDICT_RANGE, NO_CHANGE_THRESHOLD, TRAIN_RATIO)
+    transformed_data = transform_data_from_ticker(ticker, INTERVAL, EVAL_RANGE, PREDICT_RANGE, NO_CHANGE_THRESHOLD, TRAIN_RATIO)
     if transformed_data != None:
         train_ticker_data, train_ticker_targets = transformed_data['train']
         test_ticker_data, test_ticker_targets = transformed_data['test']
@@ -57,10 +56,10 @@ train_2_perc = np.count_nonzero(train_targets == 2)*100/tot_train_labels
 print("Train set has:")
 print("{:.2f}% label 0, {:.2f}% label 1, {:.2f}% label 2".format(train_0_perc, train_1_perc, train_2_perc))
 
-np.save('../../data/transformed/train_data.npy', train_data)
-np.save('../../data/transformed/train_targets.npy', train_targets)
-np.save('../../data/transformed/test_data.npy', test_data)
-np.save('../../data/transformed/test_targets.npy', test_targets)
+np.save('../../data/transformed/{}min/train_data.npy'.format(INTERVAL), train_data)
+np.save('../../data/transformed/{}min/train_targets.npy'.format(INTERVAL), train_targets)
+np.save('../../data/transformed/{}min/test_data.npy'.format(INTERVAL), test_data)
+np.save('../../data/transformed/{}min/test_targets.npy'.format(INTERVAL), test_targets)
 
 
 

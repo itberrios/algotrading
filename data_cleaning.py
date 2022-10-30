@@ -4,6 +4,7 @@ import os
 import glob
 from datetime import datetime
 
+INTERVAL = 5
 
 def is_within_range(timestamp):
     MIN_DATE = datetime(2020,10,23,9,30) # 2020-1-2 9:30:00
@@ -26,7 +27,7 @@ def is_within_range(timestamp):
     return True
     
 data = []
-for csv_file in glob.glob("data/raw/*.csv"):
+for csv_file in glob.glob("data/raw/{}min/*.csv".format(INTERVAL)):
     price_df = pd.read_csv(csv_file) 
     print("[RAW]", csv_file, "---", price_df['Time'].iloc[0], "---", price_df['Time'].iloc[-1], "---", price_df.shape[0])
     price_df['Time'] = pd.to_datetime(price_df['Time'])
@@ -34,8 +35,8 @@ for csv_file in glob.glob("data/raw/*.csv"):
     price_df = price_df[within_range_indices]
     data.append(price_df)
     print("[CLEAN]", csv_file, "---", price_df['Time'].iloc[0], "---", price_df['Time'].iloc[-1], "---", price_df.shape[0])
-    # ticker = csv_file.split('\\')[1].split('.')[0]
-    # price_df.to_csv("data/clean/{}.csv".format(ticker), index=False)
+    ticker = csv_file.split('\\')[1].split('.')[0]
+    price_df.to_csv("data/clean/{}min/{}.csv".format(INTERVAL, ticker), index=False)
 
     
 

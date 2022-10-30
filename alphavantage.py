@@ -8,10 +8,11 @@ import pandas as pd
 import numpy as np
 import time
 
-tickers = ['QCOM']
+tickers = ['AAPL', 'GOOG', 'TSLA', 'QCOM']
+INTERVAL = 5 # minutes
 
 periods = []
-for year in [1]:
+for year in [2,1]:
     for month in range(12,0,-1):
         periods.append('year{}month{}'.format(year, month))
 
@@ -21,7 +22,7 @@ for ticker in tickers[:10]:
     print("getting data for ticker {}...".format(ticker))
     for period in periods:
         with requests.Session() as s:
-            CSV_URL = 'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY_EXTENDED&symbol={}&interval=1min&slice={}&apikey=MYK5M86CMOZ6XX86'.format(ticker,period)
+            CSV_URL = 'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY_EXTENDED&symbol={}&interval={}min&slice={}&apikey=MYK5M86CMOZ6XX86'.format(ticker, INTERVAL, period)
             download = s.get(CSV_URL)
             decoded_content = download.content.decode('utf-8')
             
@@ -38,5 +39,5 @@ for ticker in tickers[:10]:
     df = pd.concat(data, axis=0)
     df['Time'] = pd.to_datetime(df['Time'])
     df = df.sort_values(by='Time')
-    df.to_csv('data/raw/{}_1min.csv'.format(ticker), index=False)
+    df.to_csv('data/raw/{}min/{}_{}min.csv'.format(INTERVAL, ticker, INTERVAL), index=False)
 

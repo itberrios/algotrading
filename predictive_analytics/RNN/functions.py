@@ -17,8 +17,8 @@ def get_target(cur_avg, next_avg, threshold=0.05):
 
 
 # Reformat raw data from YFinance
-def transform_data_from_ticker(ticker, START_DATE, END_DATE, RAW_INTERVAL, EVAL_RANGE, PREDICT_RANGE, NO_CHANGE_THRESHOLD, TRAIN_RATIO):
-    ticker_csv = '../../data/clean/{}_15min.csv'.format(ticker)
+def transform_data_from_ticker(ticker, INTERVAL, EVAL_RANGE, PREDICT_RANGE, NO_CHANGE_THRESHOLD, TRAIN_RATIO):
+    ticker_csv = '../../data/clean/{}min/{}_{}min.csv'.format(INTERVAL, ticker, INTERVAL)
     df = pd.read_csv(ticker_csv, dtype={'Open':np.float32, 'High':np.float32, 'Low':np.float32, 'Close':np.float32, 'Volume':np.float32})
     
     cur_data = []

@@ -5,27 +5,13 @@ from tensorflow.keras import models, layers, optimizers, metrics
 import numpy as np
 from functions import evaluate_on_ticker, evaluate, get_last_step_predictions, get_last_step_accuracy_based_on_confidence # custom-made helper functions
 
-X_train = np.load('../../data/transformed/train_data.npy')
-y_train = np.load('../../data/transformed/train_targets.npy')
-X_test = np.load('../../data/transformed/test_data.npy')
-y_test = np.load('../../data/transformed/test_targets.npy')
 
+INTERVAL = 5
 
-# Shuffle and split the data set
-# tot_size = X_train.shape[0]
-# np.random.seed(42)
-# indexes = np.random.permutation(tot_size)
-# train_ix_threshold = int(0.7*tot_size)
-# val_ix_threshold = train_ix_threshold + int(0.2*tot_size)
-
-# train_indexes = indexes[:train_ix_threshold]
-# val_indexes = indexes[train_ix_threshold:val_ix_threshold]
-# test_indexes = indexes[val_ix_threshold:]
-
-# X_train, y_train = data[train_indexes], targets[train_indexes]
-# X_val, y_val = data[val_indexes], targets[val_indexes]
-# X_test, y_test = data[test_indexes], targets[test_indexes]
-
+X_train = np.load('../../data/transformed/{}min/train_data.npy'.format(INTERVAL))
+y_train = np.load('../../data/transformed/{}min/train_targets.npy'.format(INTERVAL))
+X_test = np.load('../../data/transformed/{}min/test_data.npy'.format(INTERVAL))
+y_test = np.load('../../data/transformed/{}min/test_targets.npy'.format(INTERVAL))
 
 
 
@@ -35,6 +21,7 @@ model = models.Sequential([
     layers.LSTM(num_neurons, return_sequences=True, input_shape=[None, 5]),
     layers.LSTM(num_neurons, return_sequences=True),
     layers.LSTM(num_neurons, return_sequences=True),
+    layers.LSTM(10, return_sequences=True),
     layers.TimeDistributed(layers.Dense(3, activation='softmax'))
     ])
 
@@ -55,7 +42,7 @@ history = model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=1
 
     
 evaluate(model, X_test, y_test)
-get_last_step_accuracy_based_on_confidence(model, X_test, y_test, 0.95)
+get_last_step_accuracy_based_on_confidence(model, X_test, y_test, 0.90)
 
 
 
