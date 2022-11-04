@@ -11,7 +11,9 @@ import pandas as pd
 from data_utils import *
 
 # helper for getting stock names
-get_name = lambda x : re.search('\w+(?=_15min)', x).group()
+get_name_15 = lambda x : re.search('\w+(?=_15min)', x).group()
+get_name_5 = lambda x : re.search('\w+(?=_5min)', x).group()
+get_name_1 = lambda x : re.search('\w+(?=_1min)', x).group()
 
 
 def add_encoded_timestamp(df):
@@ -40,10 +42,10 @@ def add_engineered_features(df):
     ''' Obtains Engineered features '''
 
     # get price differences
-    df['open_diff'] = df['Open'].diff()
+    # df['open_diff'] = df['Open'].diff()
     df['close_diff'] = df['Close'].diff()
-    df['high_diff'] = df['High'].diff()
-    df['low_diff'] = df['Low'].diff()
+    # df['high_diff'] = df['High'].diff()
+    # df['low_diff'] = df['Low'].diff()
     df['log_vol_diff'] = df['log_volume']
 
     # possibly obtain other features
@@ -98,8 +100,12 @@ def get_stocks(data_paths, tgt_window=4, iqr_lim=0.25, encode_timestamp=True,
         df['price_change'][df['price_trend'] > upper] = 2 # upward prive movement
 
         # add stock to dict
-        stock_dfs.update({get_name(_path) : df})
-
+        if '15min' in _path:
+            stock_dfs.update({get_name_15(_path) : df})
+        elif '5min' in _path:
+            stock_dfs.update({get_name_5(_path) : df})
+        elif '1min' in _path:
+            stock_dfs.update({get_name_1(_path) : df})
 
     # return setting with copy warning to default 
     pd.options.mode.chained_assignment = 'warn'
