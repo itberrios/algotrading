@@ -51,12 +51,10 @@ class PositionalEmbedding(layers.Layer):
         self.d_model = d_model
         self.ff_dim = ff_dim
 
-
     def build(self, input_shape):
         # self.embedding = tf.keras.layers.Embedding(vocab_size, d_model, mask_zero=True) 
         self.embedding = layers.Dense(self.d_model)
         self.pos_encoding = positional_encoding(length=self.ff_dim, depth=self.d_model)
-
 
     def call(self, x):
         length = tf.shape(x)[1]
@@ -65,9 +63,6 @@ class PositionalEmbedding(layers.Layer):
         x *= tf.math.sqrt(tf.cast(self.d_model, tf.float32))
         x = x + self.pos_encoding[tf.newaxis, :length, :]
         return x
-
-
-
 
 # ============================================================================
 # Transformer Encoder
@@ -147,7 +142,6 @@ class TransformerModel(keras.Model):
         self.n_outputs = n_outputs
         self.dropout = dropout
         self.mlp_dropout = mlp_dropout
-
         
          
     def build(self, input_shape):
