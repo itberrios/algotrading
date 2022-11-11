@@ -3,7 +3,7 @@
 import yfinance as yf
 import numpy as np
 import pandas as pd
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, matthews_corrcoef
 
 # return a sample's label
 def get_target(cur_avg, next_avg, threshold=0.05):
@@ -150,6 +150,8 @@ def get_last_step_performance_based_on_confidence(model, X, y_true, conf_thresho
         
         print("Performance:")
         print(classification_report(y_true, y_pred, labels=[0,1,2], target_names=["Down", "Up", "Approx. Same"]))
+        
+        print("MCC:", matthews_corrcoef(y_true, y_pred))
         
 
 def evaluate_on_ticker(model, ticker, START_DATE, END_DATE, INTERVAL=5, 
