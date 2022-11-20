@@ -10,7 +10,7 @@ from sklearn.preprocessing import StandardScaler
 # tickers_csv = pd.read_csv('tickers.csv')['Electronic Technology'].values
 # tickers= tickers_csv[:num_tickers]
 
-tickers = ['AAPL', 'GOOG', 'TSLA', 'QCOM']
+tickers = ['META', 'GOOG', 'TSLA', 'QCOM']
 
 EVAL_RANGE = 24
 PREDICT_RANGE = 3

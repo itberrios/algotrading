@@ -5,11 +5,12 @@ from tensorflow.keras import models, layers, optimizers, metrics
 import numpy as np
 from functions import evaluate_on_ticker, get_last_step_predictions, get_last_step_performance_based_on_confidence # custom-made helper functions
 from sklearn.utils import class_weight
+import os
 
 
 SAVE = False
 MODEL_NAME = 'beta_1'
- 
+
 INTERVAL = 5
 
 X_train = np.load('../../data/transformed/{}min/train_data.npy'.format(INTERVAL))
@@ -40,27 +41,28 @@ def last_step_accuracy(Y_true, Y_pred):
     accuracy = tf.divide(tot_correct, tot_size)
     return accuracy
 
-class_weights = class_weight.compute_class_weight("balanced", classes=np.unique(y_train), y=y_train[:,-1])
-class_weights_dict = {i: class_weights[i] for i in [0,1,2]}
-sample_weights = class_weight.compute_sample_weight(class_weights_dict, y_train[:,-1])
+PATH_TO_MODEL = "models/{}".format(MODEL_NAME)
+if os.path.isdir(PATH_TO_MODEL):
+    model = tf.keras.models.load_model(PATH_TO_MODEL, custom_objects={'last_step_accuracy': last_step_accuracy})
 
-optimizer = optimizers.Adam(lr=0.01)
-early_stopping = tf.keras.callbacks.EarlyStopping(monitor='last_step_accuracy', mode='max', patience=3)
-model.compile(loss='sparse_categorical_crossentropy', optimizer=optimizer, metrics=[last_step_accuracy])
-
-history = model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=8, 
-                    sample_weight=sample_weights, callbacks=[early_stopping],
-                    batch_size=32)
-
-if SAVE:
-    model.save("models/{}".format(MODEL_NAME)) 
-# m = tf.keras.models.load_model("models/{}".format(MODEL_NAME), 
-#                                 custom_objects={'last_step_accuracy': last_step_accuracy})
-
+else:
+    class_weights = class_weight.compute_class_weight("balanced", classes=np.unique(y_train), y=y_train[:,-1])
+    class_weights_dict = {i: class_weights[i] for i in [0,1,2]}
+    sample_weights = class_weight.compute_sample_weight(class_weights_dict, y_train[:,-1])
     
+    optimizer = optimizers.Adam(lr=0.01)
+    early_stopping = tf.keras.callbacks.EarlyStopping(monitor='last_step_accuracy', mode='max', patience=3)
+    model.compile(loss='sparse_categorical_crossentropy', optimizer=optimizer, metrics=[last_step_accuracy])
+    
+    history = model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=8, 
+                        sample_weight=sample_weights, callbacks=[early_stopping],
+                        batch_size=32)
+    if SAVE:
+        model.save(PATH_TO_MODEL) 
+
 # Evaluate
 get_last_step_performance_based_on_confidence(model, X_test, y_test, 0)
-get_last_step_performance_based_on_confidence(model, X_test, y_test, 0.95)
+get_last_step_performance_based_on_confidence(model, X_test, y_test, 0.9)
 
 
 # Test on new data
