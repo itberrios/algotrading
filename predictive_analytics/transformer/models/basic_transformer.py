@@ -125,6 +125,7 @@ class TransformerModel(keras.Model):
     def __init__(self, 
             n_heads,
             d_model,
+            # d_head, # set same value for d_k and d_v
             ff_dim,
             num_transformer_blocks,
             mlp_units,
@@ -162,7 +163,7 @@ class TransformerModel(keras.Model):
         self.encoders = [TransformerEncoder(self.n_heads, self.d_model, self.ff_dim, self.dropout) 
                          for _ in range(self.num_transformer_blocks)]
 
-        self.avg_pool = layers.GlobalAveragePooling1D(data_format="channels_first")
+        self.avg_pool = layers.GlobalAveragePooling1D(data_format='channels_last') # batch, steps, features "channels_first")
 
         # get MLP portion of network
         self.mlp_layers = []
@@ -182,22 +183,39 @@ class TransformerModel(keras.Model):
         # inject time information ??
         # x = x + self.time_layer(x)
 
+        # TEMP
+        # print(x.shape)
 
         # Project Input to high Dimensional Space and Encode Position Information
         x = self.positional_embedding(x)
+
+        # TEMP
+        # print(x.shape)
         
         # Encoder Portion
         for encoder in self.encoders:
             x = encoder(x)
 
+        # TEMP
+        # print(x.shape)
+
         # Average Pooling
         x = self.avg_pool(x)
+
+        # TEMP
+        # print('avg pool', x.shape)
 
         # MLP portion for classification
         for mlp_layer in self.mlp_layers:
             x = mlp_layer(x)
 
+        # TEMP
+        # print(x.shape)
+
         x = self.mlp_output(x)
+
+        # TEMP
+        # print(x.shape)
 
         return x
 

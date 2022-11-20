@@ -24,6 +24,13 @@ class WindowGenerator():
         self.label_columns = label_columns
         self.remove_nonsequential = remove_nonsequential # removes non-sequential windows
 
+        # possibly use to unstandardize 
+        self.mean = None
+        self.std = None 
+
+        # use to get times of price info
+        self.curr_index = None
+
         # standardize training features if window norm not selected
         if not self.window_norm:
             self.standardize()
@@ -176,6 +183,10 @@ class WindowGenerator():
         return pos_encode
 
     def make_dataset(self, data):
+
+        # get current data index
+        self.curr_index = data.index
+
         data = np.array(data, dtype=np.float32)
         ds = tf.keras.utils.timeseries_dataset_from_array(
                 data=data,
