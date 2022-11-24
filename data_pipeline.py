@@ -46,7 +46,7 @@ def add_engineered_features(df):
     df['close_diff'] = df['Close'].diff()
     # df['high_diff'] = df['High'].diff()
     # df['low_diff'] = df['Low'].diff()
-    df['log_vol_diff'] = df['log_volume']
+    # df['log_vol_diff'] = df['log_volume']
 
     # possibly obtain other features
 
@@ -71,11 +71,14 @@ def get_stocks(data_paths, tgt_window=4, iqr_lim=0.25, encode_timestamp=True,
         df = pd.read_csv(_path, index_col=0, parse_dates=True, 
                         infer_datetime_format=True).dropna()
 
+        # only get desired trading times
+        df = get_trading_times(df)
+
         # add price_trend to each stock DataFrame
         df = get_numeric_price_trend(df, n=tgt_window)
 
         # use log volume instead of volume
-        df['log_volume'] = np.log(df['Volume'])
+        # df['log_volume'] = np.log(df['Volume'])
 
         # add time encoding
         if encode_timestamp:
@@ -83,14 +86,16 @@ def get_stocks(data_paths, tgt_window=4, iqr_lim=0.25, encode_timestamp=True,
 
         # add engineered features
         if engineer_features:
-            df = add_engineered_features(df)
+            # df = add_engineered_features(df)
+            pass
 
         # add technical indicators
         if tech_indicators:
-            df = add_technical_indicators(df)
+            # df = add_technical_indicators(df)
+            pass
 
         # remove volume
-        df = df.drop(columns=['Volume'])
+        # df = df.drop(columns=['Volume'])
 
         # get upper/lower thresholds for target variables
         lower, upper = get_iqr_thresholds(df['price_trend'], iqr_lim)
@@ -98,15 +103,17 @@ def get_stocks(data_paths, tgt_window=4, iqr_lim=0.25, encode_timestamp=True,
         df['price_change'] = 1 # price stays the same
         df['price_change'][df['price_trend'] < lower] = 0 # downward price movement
         df['price_change'][df['price_trend'] > upper] = 2 # upward prive movement
+        
+        # try the new way
+        # up, down = get_percent_change_targets(df['price_trend'], thresh=0.1)
+        # df['price_change'] = 1 # price stays the same
+        # df['price_change'][down] = 0 # downward price movement
+        # df['price_change'][up] = 2 # upward prive movement
+
 
         # add stock to dict
-        if '15min' in _path:
-            stock_dfs.update({get_name_15(_path) : df})
-        elif '5min' in _path:
-            stock_dfs.update({get_name_5(_path) : df})
-        elif '1min' in _path:
-            stock_dfs.update({get_name_1(_path) : df})
-
+        stock_dfs.update({get_name_5(_path) : df})
+        
     # return setting with copy warning to default 
     pd.options.mode.chained_assignment = 'warn'
 

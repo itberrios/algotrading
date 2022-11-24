@@ -11,15 +11,17 @@ from glob import glob
 import re
 import numpy as np 
 import pandas as pd
+import tensorflow as tf
 
 
 def get_trading_times(df):
     ''' Obtains a cleaned stock price DataFrame, with trading times ranging
-        from 9:45 - 4:00
+        from 9:45 - 16:00
        '''
     
     # ensure that all trading times are sequential, pad missing data with NaNs
-    df = df.reindex(pd.date_range(df.index[0], df.index[-1], freq='15min'))
+    # df = df.reindex(pd.date_range(df.index[0], df.index[-1], freq='15min'))
+    df = df.reindex(pd.date_range(df.index[0], df.index[-1], freq='5min'))
        
     # get regular trading times
     dayofweek = df.index.dayofweek
@@ -52,7 +54,7 @@ def get_numeric_price_trend(df, n=4):
 
 
     midpoints = []
-    for i in range(n):
+    for i in range(1, n + 1):
         midpoints.append(df[['Open', 'Close']].shift(-i).mean(axis=1))
 
     midpoints = pd.concat(midpoints, axis=1) # .mean(axis=1)
@@ -89,4 +91,141 @@ def get_iqr_thresholds(x, lim=1.):
 
     return lower, upper
 
+def get_percent_change_targets(price_trend, thresh=0.1):
+    percent_change = price_trend.diff() / (np.abs(price_trend.shift(1)) + 1e-6)
+    up = percent_change > thresh
+    down = percent_change < -thresh
 
+    return up, down
+
+
+def mcc_metric(y_true, y_pred, num_classes=3, threshold=0.5):
+    ''' Custom Mathew Correlation Coefficient for multiclass 
+        For more details see: 
+            "https://en.wikipedia.org/wiki/Phi_coefficient"
+        Inputs: 
+            y_true (tensor)
+            y_pred (predicted class probabilities) (tensor)
+            num_classes - number of classes
+        Outputs:
+            mcc - Mathews Correlation Coefficient
+        '''
+    # obtain predictions here, we can add in a threshold if we would like to
+    y_pred = tf.argmax(y_pred, axis=-1)
+
+    # cast to int64
+    y_true = tf.squeeze(tf.cast(y_true, tf.int64), axis=-1)
+    y_pred = tf.cast(y_pred, tf.int64)
+
+    # total number of samples
+    s = tf.size(y_true, out_type=tf.int64)
+
+    # total number of correctly predicted labels
+    c = s - tf.math.count_nonzero(y_true - y_pred)
+    
+    # number of times each class truely occured
+    t = []
+
+    # number of times each class was predicted
+    p = []
+
+    for k in range(num_classes):
+        k = tf.cast(k, tf.int64)
+        
+        # number of times that the class truely occured
+        t.append(tf.reduce_sum(tf.cast(tf.equal(k, y_true), tf.int32)))
+
+        # number of times that the class was predicted
+        p.append(tf.reduce_sum(tf.cast(tf.equal(k, y_pred), tf.int32)))
+
+
+    t = tf.expand_dims(tf.stack(t), 0)
+    p = tf.expand_dims(tf.stack(p), 0)
+
+    s = tf.cast(s, tf.int32)
+    c = tf.cast(c, tf.int32)
+    
+    num = tf.cast(c*s - tf.matmul(t, tf.transpose(p)), tf.float32)
+    dem = tf.math.sqrt(tf.cast(s**2 - tf.matmul(p, tf.transpose(p)), tf.float32)) \
+          * tf.math.sqrt(tf.cast(s**2 - tf.matmul(t, tf.transpose(t)), tf.float32))
+
+
+    mcc = tf.divide(num, dem + 1e-6)
+
+    return mcc
+    
+
+
+def numpy_mcc_metric(y_true, y_pred, num_classes=3, threshold=0.5):
+    ''' Custom Mathew Correlation Coefficient for multiclass 
+        For more details see: 
+            "https://en.wikipedia.org/wiki/Phi_coefficient"
+        Inputs: 
+            y_true (tensor)
+            y_pred (tensor)
+            num_classes - number of classes
+        Outputs:
+            mcc - Mathews Correlation Coefficient
+        '''
+    # obtain predictions here, we can add in a threshold if we would like to
+    y_pred = np.argmax(y_pred, axis=-1)
+
+    # cast to int64
+    # y_true = tf.squeeze(tf.cast(y_true, tf.int64), axis=-1)
+    # y_pred = tf.cast(y_pred, tf.int64)
+
+    # total number of samples
+    s = tf.size(y_true, out_type=tf.int64)
+
+    # total number of correctly predicted labels
+    c = s - tf.math.count_nonzero(y_true - y_pred)
+    
+    # number of times each class truely occured
+    t = []
+
+    # number of times each class was predicted
+    p = []
+
+    for k in range(num_classes):
+        k = tf.cast(k, tf.int64)
+        
+        # number of times that the class truely occured
+        t.append(tf.reduce_sum(tf.cast(tf.equal(k, y_true), tf.int32)))
+
+        # number of times that the class was predicted
+        p.append(tf.reduce_sum(tf.cast(tf.equal(k, y_pred), tf.int32)))
+
+
+    t = tf.expand_dims(tf.stack(t), 0)
+    p = tf.expand_dims(tf.stack(p), 0)
+
+    s = tf.cast(s, tf.int32)
+    c = tf.cast(c, tf.int32)
+    
+    num = tf.cast(c*s - tf.matmul(t, tf.transpose(p)), tf.float32)
+    dem = tf.math.sqrt(tf.cast(s**2 - tf.matmul(p, tf.transpose(p)), tf.float32)) \
+          * tf.math.sqrt(tf.cast(s**2 - tf.matmul(t, tf.transpose(t)), tf.float32))
+
+
+    mcc = tf.divide(num, dem + 1e-6)
+
+    return mcc
+
+
+def get_class_weights(dfs, name):
+    class_counts = np.bincount(dfs[name][0].price_change)
+    total = class_counts.sum()
+    n_classes = len(class_counts)
+
+    weights = []
+    for idx, count in enumerate(class_counts):
+        # compute balanced weights
+        weights.append(total / (n_classes*count))
+
+        # get inverse frequency class weighting
+        # weights.append(1/np.power(count, 1))
+
+
+    weights = np.array(weights) 
+    # weights = weights / weights.sum()
+    return weights
