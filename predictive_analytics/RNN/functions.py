@@ -4,6 +4,7 @@ import yfinance as yf
 import numpy as np
 import pandas as pd
 from sklearn.metrics import classification_report, matthews_corrcoef
+import tensorflow as tf
 
 # return a sample's label
 def get_target(cur_avg, next_avg, threshold=0.05):
@@ -102,6 +103,19 @@ def transform_raw_data(df, INTERVAL, EVAL_RANGE, PREDICT_RANGE, NO_CHANGE_THRESH
     elif train_means is not None and train_stds is not None: 
         scaled_data = (ticker_data - train_means)/train_stds
         return (scaled_data, ticker_targets, time_stamps)
+
+    
+@tf.autograph.experimental.do_not_convert
+def last_step_accuracy(Y_true, Y_pred):
+    last_step_labels = tf.dtypes.cast(Y_true[:, -1], tf.int32)
+    last_step_preds = Y_pred[:,-1]
+    last_step_preds = tf.math.argmax(last_step_preds, axis=1, output_type=tf.int32)
+    compare = tf.dtypes.cast(tf.equal(last_step_preds, last_step_labels), tf.int32)
+    tot_correct = tf.reduce_sum(compare)
+    tot_size = tf.size(last_step_labels)
+    accuracy = tf.divide(tot_correct, tot_size)
+    return accuracy
+
 
 
 # def extract_last_step_labels(y_pred): # y_pred: output matrix of RNN. Output: 1D matrix of last step predictions

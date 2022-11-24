@@ -3,7 +3,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np 
-from functions import get_target, transform_raw_data
+from .functions import get_target, transform_raw_data
 from sklearn.preprocessing import StandardScaler
 
 # num_tickers = 100
