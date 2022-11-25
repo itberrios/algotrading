@@ -35,7 +35,7 @@ class MyStrategy(bt.Strategy):
     # logging function
     def log(self, txt):
         '''Logging function'''
-        dt = self.datas[0].datetime.datetime().isoformat()
+        dt = str(self.datas[0].datetime.datetime())
         print(f'{dt}, {txt}')
     
     

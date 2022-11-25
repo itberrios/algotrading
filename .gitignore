@@ -1,1 +1,5 @@
 data
+data/transformed/1min/test_data.npy
+data/transformed/1min/test_targets.npy
+data/transformed/1min/train_data.npy
+data/transformed/1min/train_targets.npy

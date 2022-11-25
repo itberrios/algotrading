@@ -4,6 +4,7 @@ import pandas as pd
 import tensorflow as tf
 import backtrader as bt
 from Strategies import *
+from datetime import datetime
 
 # import functions from RNN module
 import sys
@@ -15,22 +16,27 @@ sys.path.append(root_folder)
 from predictive_analytics.RNN.functions import transform_raw_data, last_step_accuracy, get_last_step_predictions_with_confidence
 
 
+def change_time_format(timestamp): # so that backtrader logs are correct
+    reg = "%Y-%m-%d %H:%M:%S"
+    time_as_str = timestamp.strftime(reg)
+    reformatted_time = datetime.strptime(time_as_str, reg)
+    return reformatted_time
+
+
+# Load model
+MODEL_NAME = 'beta_1'
+PATH_TO_MODEL = "../predictive_analytics/RNN/models/{}".format(MODEL_NAME)
+model = tf.keras.models.load_model(PATH_TO_MODEL, custom_objects={'last_step_accuracy': last_step_accuracy})
+
+
 # Parameters Setting
 ticker = 'TSLA'
-START_DATE = '2022-10-22'
+START_DATE = '2022-11-1'
 END_DATE = '2022-11-20'
-
-MODEL_NAME = 'beta_1'
 
 EVAL_RANGE=24
 PREDICT_RANGE=3
 INTERVAL = 5
-
-
-# Load model
-PATH_TO_MODEL = "../predictive_analytics/RNN/models/{}".format(MODEL_NAME)
-model = tf.keras.models.load_model(PATH_TO_MODEL, custom_objects={'last_step_accuracy': last_step_accuracy})
-
 
 # for normalization
 train_means = np.load('../data/transformed/{}min/{}_train_means.npy'.format(INTERVAL, ticker))
@@ -57,6 +63,7 @@ df.drop(['Dividends','Stock Splits'], axis=1, inplace=True)
 df.rename(columns = {'Open':'open','High':'high','Low':'low','Adj Close':'close','Volume':'volume',
                          }, inplace=True)
 df[['prediction','confidence']] = y_pred
+df['Time'] = df['Time'].apply(change_time_format)
 df.set_index('Time', inplace=True)
 
 
