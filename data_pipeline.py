@@ -42,11 +42,12 @@ def add_engineered_features(df):
     ''' Obtains Engineered features '''
 
     # get price differences
-    # df['open_diff'] = df['Open'].diff()
+    df['open_diff'] = df['Open'].diff()
     df['close_diff'] = df['Close'].diff()
-    # df['high_diff'] = df['High'].diff()
-    # df['low_diff'] = df['Low'].diff()
-    # df['log_vol_diff'] = df['log_volume']
+    df['high_diff'] = df['High'].diff()
+    df['low_diff'] = df['Low'].diff()
+    # df['log_vol_diff'] = df['log_volume'].diff()
+    df['log_vol_diff'] = np.log(df['Volume']).diff()
 
     # possibly obtain other features
 
@@ -68,6 +69,11 @@ def get_stocks(data_paths, tgt_window=4, iqr_lim=0.25, encode_timestamp=True,
 
     stock_dfs = {}
     for _path in data_paths:
+
+        # Skip META stock
+        if 'META' in _path:
+            continue
+
         df = pd.read_csv(_path, index_col=0, parse_dates=True, 
                         infer_datetime_format=True).dropna()
 
@@ -82,12 +88,12 @@ def get_stocks(data_paths, tgt_window=4, iqr_lim=0.25, encode_timestamp=True,
 
         # add time encoding
         if encode_timestamp:
-            df = add_encoded_timestamp(df)
+            # df = add_encoded_timestamp(df)
+            pass
 
         # add engineered features
         if engineer_features:
-            # df = add_engineered_features(df)
-            pass
+            df = add_engineered_features(df)
 
         # add technical indicators
         if tech_indicators:
