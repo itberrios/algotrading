@@ -66,9 +66,9 @@ get_last_step_performance_based_on_confidence(model, X_test, y_test, 0.9)
 
 
 # Test on new data
-ticker = 'GOOG'
+ticker = 'QCOM'
 START_DATE = '2022-10-22'
-END_DATE = '2022-10-29'
+END_DATE = '2022-11-20'
 result = evaluate_on_ticker(model, ticker, START_DATE, END_DATE, conf_thresholds=[0,0.7,0.9,0.95])
 
 # repeated nested cross validation

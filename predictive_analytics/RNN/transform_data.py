@@ -3,20 +3,20 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np 
-from functions import get_target, transform_raw_data
+from .functions import get_target, transform_raw_data
 from sklearn.preprocessing import StandardScaler
 
 # num_tickers = 100
 # tickers_csv = pd.read_csv('tickers.csv')['Electronic Technology'].values
 # tickers= tickers_csv[:num_tickers]
 
-tickers = ['META', 'GOOG', 'TSLA', 'QCOM']
+tickers = ['AAPL', 'GOOG', 'TSLA', 'QCOM']
 
-EVAL_RANGE = 24
-PREDICT_RANGE = 3
-INTERVAL = 5 # minutes
+EVAL_RANGE = 30
+PREDICT_RANGE = 5
+INTERVAL = 1 # minutes
 
-NO_CHANGE_THRESHOLD = 0.1 # percentage of ticker's price
+NO_CHANGE_THRESHOLD = 0.05 # percentage of ticker's price
 TRAIN_RATIO = 0.95
 
 train_data = None
