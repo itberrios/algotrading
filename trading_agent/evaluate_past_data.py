@@ -59,7 +59,7 @@ y_pred = get_last_step_predictions_with_confidence(model, data)
 
 # create data file for backtrade
 df = df.loc[EVAL_RANGE-1:df.shape[0]-PREDICT_RANGE-1] # data points with labels
-df.drop(['Dividends','Stock Splits'], axis=1, inplace=True)
+df.drop(['Dividends','Stock Splits'], axis=1, inplace=True) 
 df.rename(columns = {'Open':'open','High':'high','Low':'low','Adj Close':'close','Volume':'volume',
                          }, inplace=True)
 df[['prediction','confidence']] = y_pred
